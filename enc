@@ -1,0 +1,27 @@
+#!/usr/bin/bash
+
+# wrapper for managing encfs directory
+
+rootdir="$HOME/.enc"
+mountdir="$HOME/enc"
+
+case $1 in
+  m|mount) 
+    [[ -d "$mountdir" ]] || mkdir "$mountdir"
+    echo "mount $mountdir" 
+    encfs "$rootdir" "$mountdir"
+    ;;
+  u|umount)
+    echo "unmount $mountdir" 
+    fusermount -u "$mountdir"
+    rmdir "$mountdir"
+    ;;
+  i|info)
+    echo "info for $rootdir"
+    encfsctl info "$rootdir"
+    ;;
+  *)
+    echo "usage: $0 {m,mount,u,umount,i,info}"
+    exit 1
+    ;;
+esac

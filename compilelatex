@@ -1,0 +1,220 @@
+#!/usr/bin/bash
+
+
+# automatically compiles latex documents
+# runs pdflatex as many times as necessary
+# detects bibtex
+# puts extraneous files in a temporary directory
+
+
+
+#
+# parameters
+#
+
+# temporary build directory
+builddirbase="$HOME/tmp"
+
+# whether to output debug info
+debug=true
+
+
+
+
+#
+# initial checks
+#
+
+# can only be one argument
+if [[ $# != 1 ]]; then
+  $debug && echo 'takes exactly one argument' 
+  exit 1
+fi
+
+# for later use
+arg=$1
+
+
+
+#
+# function definitons
+#
+
+# prints if debug is enabled
+_out () {
+  $debug && echo "$*"
+}
+
+# shasum of aux file
+_shaaux () {
+  sha256sum "$builddir/$basename.aux" | cut -d' ' -f1
+}
+
+# shasum of bbl file
+_shabbl () {
+  sha256sum "$builddir/$basename.bbl" | cut -d' ' -f1
+}
+
+# runs pdflatex
+_latex () {
+  if [[ -z "$aux" ]]; then
+    if [[ -f "$builddir/$basename.aux" ]]; then
+      aux=`_shaaux`
+    else
+      aux='-1'
+    fi
+  fi
+
+  pdflatex \
+    -interaction nonstopmode \
+    -halt-on-error \
+    -shell-escape \
+    -output-directory "$builddir" \
+    "$basename" &> /dev/null
+
+  if [[ $? != 0 ]]; then
+    grep -C 3 '^! ' "$builddir/$basename.log"
+    return 1
+  else
+    oldaux=$aux
+    aux=`_shaaux`
+    return 0
+  fi
+}
+
+# runs bibtex
+_bibtex () {
+  cd "$builddir"
+  bibtex "$basename" &> /dev/null
+  ret=$?
+  cd "$rootdir"
+  return $ret
+}
+
+
+
+
+#
+# prepare
+#
+
+_init () {
+  # filename with .tex extension stripped
+  basename=`basename -s '.tex' "$arg"`
+
+  # if for some reason the tex file is not in the cwd, then go to the correct parent directory
+  cd `dirname $arg`
+
+  # this is the parent directory of the tex file
+  # the compiled pdf file will go here
+  rootdir="`pwd`"
+
+  # make sure file exists
+  if [[ ! -f "$basename.tex" ]]; then
+    _out "file \`$arg\' does not exist"
+    exit 1
+  fi
+}
+
+_init
+
+# look for a comment of the form |mainfile|../filename|
+# this is a flag that this file is actually just an \input to a main file
+# if found, need to reinitialize
+mainfile=`awk -F '|' '/\|mainfile\|.*\|/ {print $3}' "$basename.tex"`
+if [[ -n "$mainfile" ]]; then
+  _out "found main tex file \`$mainfile'"
+  arg=$mainfile
+  _init
+fi
+
+# build directory <= where pdflatex output will go
+builddir="$builddirbase/$basename"
+
+# create build directory if necessary
+[[ -d "$builddir" ]] || mkdir "$builddir"
+
+
+
+
+#
+# compile
+#
+
+
+# always run latex at least once
+_out 'running latex'
+_latex || exit 1
+
+
+# bool to determine whether or not to run bibtex
+runbibtex=false
+
+# find name[s] of bib file[s] by checking for \bibdata command[s] in the aux file
+for file in $(awk -F '[{}]' '/^\\bibdata{.*}/ {print $2}' "$builddir/$basename.aux" | sed 's:,: :g'); do
+  if [[ -n $file ]]; then
+    # revtex generates a bogus bib file which should be ignored
+    if [[ "$file" == "${basename}Notes" ]]; then
+      continue
+    # check if it has changed since the last run
+    elif [[ -f "$builddir/$file.bib" ]]; then
+      diff -q "$rootdir/$file.bib" "$builddir/$file.bib" &> /dev/null
+      # if it has, copy new version and set to run bibtex in a moment
+      if [[ $? != 0 ]]; then
+        _out "found changed bibtex file \`$file'"
+        cp "$rootdir/$file.bib" "$builddir"
+        runbibtex=true
+      fi
+    else
+      # new bib files also require bibtex [i.e. if this is the first compilation]
+      _out "found new bibtex file \`$file'"
+      cp "$rootdir/$file.bib" "$builddir"
+      runbibtex=true
+    fi
+  fi
+done
+
+# run bibtex if necessary
+if $runbibtex; then
+  # get shasum of old bbl file, if it exists
+  if [[ -f "$builddir/$basename.bbl" ]]; then
+    oldbbl=`_shabbl`
+  else
+    oldbbl='-1'
+  fi
+
+  # run bibtex
+  _out 'running bibtex'
+  _bibtex || exit 1
+
+  # run latex if the bbl file has changed after running bibtex
+  if [[ "$oldbbl" != `_shabbl` ]]; then
+    _out 'bbl file changed, running latex again'
+    _latex || exit 1
+  fi
+fi
+
+
+# tikz + gnuplot doesn't work quite right with the -output-directory option
+# the .gnuplot file is created correctly but gnuplot doesn't run
+# so do it explicitly here
+#for g in $builddir/*.gnuplot; do
+#  echo "running gnuplot"
+#  gnuplot $g
+#  # artificially change the checksum for the aux file so that latex is run at least once more
+#  oldaux=-1
+#done
+
+
+
+# run pdflatex until the aux file doesn't change
+while [[ "$oldaux" != "$aux" ]]; do
+  _out 'aux file changed, running latex again'
+  _latex || exit 1
+done
+
+
+
+
+# copy compiled pdf
+rsync "$builddir/$basename.pdf" "$rootdir"

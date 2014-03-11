@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+
+# pacman cleanup
+
+echo 'removing orphans'
+[[ $(pacman -Qdt) ]] && sudo pacman -Rs $(pacman -Qdtq)
+echo
+
+pc='/usr/bin/paccache --remove --verbose'
+
+echo 'pruning cache:  uninstalled pkgs'
+$pc --uninstalled --keep 0
+$pc --uninstalled --keep 0 --cachedir $HOME/pkg/cache
+echo
+
+echo 'pruning cache:  old pkgs'
+$pc --keep 2
+$pc --keep 2 --cachedir $HOME/pkg/cache
+
+exit 0

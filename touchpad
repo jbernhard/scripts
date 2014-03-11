@@ -1,0 +1,38 @@
+#!/usr/bin/bash
+
+# touchpad management
+
+_on () {
+  synclient 'TouchpadOff=0'
+  pgrep -x 'syndaemon' &> /dev/null || syndaemon -t -k -i 1 -d
+}
+
+_off () {
+  pkill -x 'syndaemon'
+  synclient 'TouchpadOff=1'
+}
+
+_state () {
+  synclient | awk '/TouchpadOff/ {print $3}'
+}
+
+case $1 in
+  'on') _on ;;
+  'off') _off ;;
+  'toggle') 
+    case `_state` in
+      [02]) _off ;;
+      1) _on ;;
+    esac
+    ;;
+  'state') 
+    s=`_state` 
+    echo -n "$s: "
+    case $s in
+      0) echo 'enabled' ;;
+      1) echo 'disabled' ;;
+      2) echo 'tapping + scrolling disabled' ;;
+    esac
+    ;;
+  *) echo "usage:  $0 {on|off|toggle|state}" && exit 1 ;;
+esac

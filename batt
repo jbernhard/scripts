@@ -1,0 +1,37 @@
+#!/usr/bin/zsh
+
+zmodload zsh/mathfunc
+
+cd /sys/class/power_supply/BAT0
+
+
+
+energy_full=$[float($(<energy_full))/10**6]
+energy_full_design=45.0
+energy_now=$[float($(<energy_now))/10**6]
+power_now=$[float($(<power_now))/10**6]
+
+printf "design:     %5.2f Wh\n" $energy_full_design
+
+printf "last full:  %5.2f Wh" $energy_full
+printf " [%3.2f%%]\n" $[100*$energy_full/$energy_full_design]
+
+printf "remaining:  %5.2f Wh" $energy_now
+printf " [%3.2f%%]\n" $[100*$energy_now/$energy_full]
+
+case $(<status) in
+  'Charging') 
+    hours=$[(${energy_full}-${energy_now})/${power_now}]
+    ;;
+  'Discharging') 
+    hours=$[${energy_now}/${power_now}]
+    power_now=$[-1.0*${power_now}]
+    ;;
+  *)
+    c='?'
+    hours=0
+    ;;
+esac
+
+printf "rate:      %+6.2f W\n" $power_now
+printf "time:       %5.2f h\n" $hours

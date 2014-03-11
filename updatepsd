@@ -1,0 +1,21 @@
+#!/usr/bin/bash
+
+# update profile-sync-daemon
+
+if pgrep chromium &> /dev/null; then
+  echo 'chromium running'
+  exit 1
+fi
+
+echo 'stopping psd'
+sudo systemctl stop psd psd-resync || exit 1
+
+packer -S --noconfirm profile-sync-daemon || exit 1
+
+echo 'reloading daemons'
+sudo systemctl daemon-reload || exit 1
+
+echo 'starting psd'
+sudo systemctl start psd psd-resync || exit 1
+
+echo 'done'

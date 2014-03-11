@@ -1,0 +1,66 @@
+#!/usr/bin/bash
+
+
+# helper script for managing xdg filetypes
+
+
+#
+# xdg-mime wrapper functions
+#
+
+query_filetype () {
+  xdg-mime query filetype $1
+}
+
+query_default () {
+ xdg-mime query default $1
+}
+
+set_default () {
+  xdg-mime default $1 $filetype || return 1
+
+  # verify the default has actually been set
+  if [[ $(query_default $filetype) == $1 ]]; then
+    echo "successfully set default $1"
+  else
+    echo "failed to set default $1"
+    return 1
+  fi
+}
+
+
+
+#
+# action
+#
+
+# determine xdg filetype and current default .desktop file
+filetype=$(query_filetype "$1")
+default=$(query_default $filetype)
+
+# construct array of possible .desktop files from the xdg cache
+options=($(grep "$filetype" /usr/share/applications/mimeinfo.cache | cut -d= -f2 | sed -e 's:;: :g'))
+options+=('custom')
+options+=('do nothing')
+
+
+echo "filetype:  $filetype"
+echo "default:   $default"
+echo
+echo 'choose a new default:'
+
+select opt in "${options[@]}"; do
+  case $opt in
+    'custom')
+      read -p 'enter .desktop file: ' a
+      set_default $a
+      ;;
+    'do nothing') 
+      echo 'exiting'
+      ;;
+    *) 
+      set_default $opt
+      ;;
+  esac
+  break
+done

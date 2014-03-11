@@ -1,0 +1,31 @@
+#!/usr/bin/bash
+
+# wifi management shortcuts
+
+case $1 in
+  st|status) 
+    sudo wpa_cli status
+    echo 
+    iw dev wlan0 link 
+    echo -en '\n        ' 
+    iw dev wlan0 get power_save 
+    echo 
+    ip addr show wlan0
+    ;;
+
+  ip)
+    sudo dhcpcd -n wlan0
+    ;;
+
+  sc|scan)
+    sudo iw dev wlan0 scan | less
+    ;;
+
+  pwr|power|power_save)
+    sudo iw dev wlan0 set power_save $2
+    ;;
+
+  rs|restart)
+    sudo systemctl restart netctl-auto@wlan0.service
+    ;;
+esac
