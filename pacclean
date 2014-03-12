@@ -8,13 +8,15 @@ echo
 
 pc='/usr/bin/paccache --remove --verbose'
 
+source /etc/makepkg.conf
+
 echo 'pruning cache:  uninstalled pkgs'
 $pc --uninstalled --keep 0
-$pc --uninstalled --keep 0 --cachedir $HOME/pkg/cache
+$pc --uninstalled --keep 0 --cachedir $PKGDEST
 echo
 
 echo 'pruning cache:  old pkgs'
 $pc --keep 2
-$pc --keep 2 --cachedir $HOME/pkg/cache
+$pc --keep 2 --cachedir $PKGDEST
 
 exit 0
