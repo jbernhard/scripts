@@ -53,7 +53,7 @@ select opt in "${options[@]}"; do
   case $opt in
     'custom')
       read -p 'enter .desktop file: ' a
-      set_default $a
+      set_default ${a%.desktop}.desktop
       ;;
     'do nothing') 
       echo 'exiting'
