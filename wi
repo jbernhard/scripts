@@ -37,7 +37,7 @@ usage:  $0 command
   st|status             : assorted status information
   ip                    : renew DHCP
   sc|scan               : scan for networks
-  pwr|power|power_save  : toggle power saving
+  pwr|power|power_save  : set power saving on/off
   rs|restart|stop|start : manage netctl auto wireless
 EOF
     ;;
