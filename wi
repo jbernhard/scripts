@@ -25,19 +25,20 @@ case $1 in
     sudo iw dev wlan0 set power_save $2
     ;;
 
-  rs|restart)
-    sudo systemctl restart netctl-auto@wlan0.service
+  rs|restart|stop|start)
+    [[ $1 == 'rs' ]] && cmd='restart' || cmd=$1
+    sudo systemctl $cmd netctl-auto@wlan0.service
     ;;
 
   *) 
     cat <<EOF
 usage:  $0 command
 
-  st|status            : assorted status information
-  ip                   : renew DHCP
-  sc|scan              : scan for networks
-  pwr|power|power_save : toggle power saving
-  rs|restart           : restart netctl auto wireless
+  st|status             : assorted status information
+  ip                    : renew DHCP
+  sc|scan               : scan for networks
+  pwr|power|power_save  : toggle power saving
+  rs|restart|stop|start : manage netctl auto wireless
 EOF
     ;;
 esac
