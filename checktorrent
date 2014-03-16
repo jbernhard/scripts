@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 
+import argparse
 import itertools
 import hashlib
-import sys
+import os.path
 
 
 # functions for decoding bencoded data
@@ -82,13 +83,17 @@ def bdecode(x):
     return r
 
 
-def pieces_generator(files, size):
+def pieces_generator(files, piece_length):
     """
     Generate pieces of files.
 
+    This is a little tricky for multi-file torrents because pieces may overlap
+    file boundaries.  Therefore, the first piece of a file may include the last
+    [partial] piece from the previous file.
+
     Arguments:
         files -- list of files to break into pieces
-        size  -- size of pieces in bytes
+        piece_length -- size of pieces in bytes
 
     Yields:
         bytes objects with specified size
@@ -101,52 +106,81 @@ def pieces_generator(files, size):
         print('  ' + file)
 
         with open(file, 'rb') as f:
+            # if there is an existing piece [from a previous file]
+            # read only enough to complete the piece
             if piece:
-                piece += f.read(size - len(piece))
+                piece += f.read(piece_length - len(piece))
                 yield piece
 
+            # now read full pieces normall
             while True:
-                piece = f.read(size)
-                if piece:
+                piece = f.read(piece_length)
+
+                # only yield if the piece is complete
+                if len(piece) == piece_length:
                     yield piece
                 else:
                     break
 
+    # yield the final piece
     if piece:
         yield piece
 
 
-def check_torrent(fn):
-    """ Verify torrent integrity. """
+def check_torrent(fn, prefix=None):
+    """
+    Verify torrent integrity.
+
+    Arguments:
+        fn -- path to torrent file
+        prefix -- path to downloaded files
+
+    Returns:
+        True or False
+
+    """
 
     print(fn)
 
+    # read full torrent file as bytes
     with open(fn, 'rb') as f:
         data = f.read()
 
+    # decode torrent
     metainfo = bdecode(data)
     info = metainfo['info']
 
-    piece_length = info['piece length']
-
-    try:
-        ### FIXME
-        files = info['files']
-    except KeyError:
+    # extract filename[s] to verify
+    if 'files' in info:
+        # multi-file torrent
+        file_dicts = info['files']
+        files = [os.path.join(*d['path']) for d in file_dicts]
+    else:
+        # single-file torrent
         files = [info['name']]
 
+    # prepend file prefix
+    if prefix is not None:
+        files = [os.path.join(prefix, fl) for fl in files]
+
+    # construct iterable of hashed file pieces
+    piece_length = info['piece length']
     pieces = pieces_generator(files, piece_length)
     hashed_pieces = (hashlib.sha1(piece).digest() for piece in pieces)
 
+    # construct iterable of hashes from torrent
     allhashes = info['pieces']
     hashes = (allhashes[i:i+20] for i in range(0, len(allhashes), 20))
 
-    for h1, h2 in itertools.zip_longest(hashed_pieces, hashes):
-        if h1 != h2:
-            success = False
-            break
-    else:
-        success = True
+    # zip together the two iterables into pairs of hashes
+    # use zip_longest instead of regular zip to capture more possible errors
+    # e.g. if the files have trailing data this will fail
+    pairs = itertools.zip_longest(hashed_pieces, hashes)
+
+    # check that all pairs of hashes are identical
+    # all() will exit on the first failure
+    # i.e. it won't check the entire torrent if the first piece fails
+    success = all(h1 == h2 for h1, h2 in pairs)
 
     print('passed' if success else 'failed')
 
@@ -154,7 +188,13 @@ def check_torrent(fn):
 
 
 def main():
-    success = [check_torrent(fn) for fn in sys.argv[1:]]
+    parser = argparse.ArgumentParser(description='Verify torrent integrity.')
+    parser.add_argument('files', nargs='+', metavar='torrent_file',
+                        help='Torrent file[s] to check.')
+    parser.add_argument('-p', '--prefix', help='Path to downloaded files.')
+    args = parser.parse_args()
+
+    success = [check_torrent(fn, prefix=args.prefix) for fn in args.files]
 
     return all(success)
 
