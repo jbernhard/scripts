@@ -182,7 +182,7 @@ def check_torrent(fn, prefix=None):
     # i.e. it won't check the entire torrent if the first piece fails
     success = all(h1 == h2 for h1, h2 in pairs)
 
-    print('passed' if success else 'failed')
+    print('passed' if success else 'FAILED', end='\n\n')
 
     return success
 
@@ -196,7 +196,9 @@ def main():
 
     success = [check_torrent(fn, prefix=args.prefix) for fn in args.files]
 
-    return all(success)
+    print('{}/{} passed'.format(success.count(True), len(success)))
+
+    exit(0 if all(success) else 1)
 
 
 if __name__ == "__main__":
