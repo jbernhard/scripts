@@ -1,0 +1,163 @@
+#!/usr/bin/env python
+
+
+import itertools
+import hashlib
+import sys
+
+
+# functions for decoding bencoded data
+# original version from the bittorrent bencode module
+# updated for python 3
+
+# decode the four bencode types
+# note that these functions often call each other recursively
+
+def decode_int(x, f):
+    f += 1
+    newf = x.index(b'e', f)
+    n = int(x[f:newf])
+
+    if x[f] == ord('-'):
+        if x[f + 1] == '0':
+            raise ValueError
+    elif x[f] == ord('0') and newf != f+1:
+        raise ValueError
+
+    return n, newf+1
+
+
+def decode_string(x, f):
+    colon = x.index(b':', f)
+    n = int(x[f:colon])
+
+    if x[f] == ord('0') and colon != f+1:
+        raise ValueError
+
+    colon += 1
+    encoded_string = x[colon:colon+n]
+    try:
+        r = encoded_string.decode()
+    except UnicodeDecodeError:
+        r = encoded_string
+
+    return r, colon+n
+
+
+def decode_list(x, f):
+    r, f = [], f+1
+
+    while x[f] != ord('e'):
+        v, f = decode_func[chr(x[f])](x, f)
+        r.append(v)
+
+    return r, f+1
+
+
+def decode_dict(x, f):
+    r, f = {}, f+1
+
+    while x[f] != ord('e'):
+        k, f = decode_string(x, f)
+        r[k], f = decode_func[chr(x[f])](x, f)
+
+    return r, f+1
+
+
+# define a dictionary mapping bencode keys to decoding functions
+decode_func = {str(i): decode_string for i in range(10)}
+decode_func.update(l=decode_list, d=decode_dict, i=decode_int)
+
+
+def bdecode(x):
+    """ Decode a bencoded string. """
+
+    try:
+        r, l = decode_func[chr(x[0])](x, 0)
+    except (IndexError, KeyError, ValueError):
+        raise ValueError("not a valid bencoded string")
+    if l != len(x):
+        raise ValueError("invalid bencoded value (data after valid prefix)")
+
+    return r
+
+
+def pieces_generator(files, size):
+    """
+    Generate pieces of files.
+
+    Arguments:
+        files -- list of files to break into pieces
+        size  -- size of pieces in bytes
+
+    Yields:
+        bytes objects with specified size
+
+    """
+
+    piece = None
+
+    for file in files:
+        print('  ' + file)
+
+        with open(file, 'rb') as f:
+            if piece:
+                piece += f.read(size - len(piece))
+                yield piece
+
+            while True:
+                piece = f.read(size)
+                if piece:
+                    yield piece
+                else:
+                    break
+
+    if piece:
+        yield piece
+
+
+def check_torrent(fn):
+    """ Verify torrent integrity. """
+
+    print(fn)
+
+    with open(fn, 'rb') as f:
+        data = f.read()
+
+    metainfo = bdecode(data)
+    info = metainfo['info']
+
+    piece_length = info['piece length']
+
+    try:
+        ### FIXME
+        files = info['files']
+    except KeyError:
+        files = [info['name']]
+
+    pieces = pieces_generator(files, piece_length)
+    hashed_pieces = (hashlib.sha1(piece).digest() for piece in pieces)
+
+    allhashes = info['pieces']
+    hashes = (allhashes[i:i+20] for i in range(0, len(allhashes), 20))
+
+    for h1, h2 in itertools.zip_longest(hashed_pieces, hashes):
+        if h1 != h2:
+            success = False
+            break
+    else:
+        success = True
+
+    print('passed' if success else 'failed')
+
+    return success
+
+
+def main():
+    success = [check_torrent(fn) for fn in sys.argv[1:]]
+
+    return all(success)
+
+
+if __name__ == "__main__":
+    main()
