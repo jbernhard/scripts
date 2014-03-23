@@ -112,7 +112,7 @@ def pieces_generator(files, piece_length):
                 piece += f.read(piece_length - len(piece))
                 yield piece
 
-            # now read full pieces normall
+            # now read full pieces normally
             while True:
                 piece = f.read(piece_length)
 
