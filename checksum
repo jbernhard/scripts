@@ -2,6 +2,8 @@
 
 # verify two files are identical
 
+[[ $# != 2 ]] && echo "usage:  $0 file1 file2" && exit
+
 _hash () {
   sha512sum "$1" | tee /dev/stderr | head -c 128
 }
