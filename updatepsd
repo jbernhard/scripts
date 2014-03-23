@@ -12,7 +12,7 @@ sudo systemctl stop psd psd-resync || exit 1
 
 packer -S --noconfirm profile-sync-daemon || exit 1
 
-[[ -f /etc/psd.conf.pacnew ]] && vimdiff /etc/psd.conf{,.pacnew}
+[[ -f /etc/psd.conf.pacnew ]] && sudo vimdiff /etc/psd.conf{,.pacnew}
 
 echo 'reloading daemons'
 sudo systemctl daemon-reload || exit 1
