@@ -19,14 +19,14 @@ _state () {
 case $1 in
   'on') _on ;;
   'off') _off ;;
-  'toggle') 
+  'toggle')
     case `_state` in
       [02]) _off ;;
       1) _on ;;
     esac
     ;;
-  'state') 
-    s=`_state` 
+  'state')
+    s=`_state`
     echo -n "$s: "
     case $s in
       0) echo 'enabled' ;;

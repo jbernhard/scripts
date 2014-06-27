@@ -55,10 +55,10 @@ select opt in "${options[@]}"; do
       read -p 'enter .desktop file: ' a
       set_default ${a%.desktop}.desktop
       ;;
-    'do nothing') 
+    'do nothing')
       echo 'exiting'
       ;;
-    *) 
+    *)
       set_default $opt
       ;;
   esac

@@ -27,7 +27,7 @@ debug=true
 
 # can only be one argument
 if [[ $# != 1 ]]; then
-  $debug && echo 'takes exactly one argument' 
+  $debug && echo 'takes exactly one argument'
   exit 1
 fi
 

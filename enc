@@ -17,7 +17,7 @@ mountdir=/tmp/$tcname
 
 
 case $cmd in
-  m|mount) 
+  m|mount)
     [[ -d $mountdir ]] || mkdir $mountdir
     chmod 600 $mountdir
     sudo cryptsetup -v open --type tcrypt $tcfile $tcname

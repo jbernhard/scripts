@@ -20,10 +20,10 @@ printf "remaining:  %5.2f Wh" $energy_now
 printf " [%3.2f%%]\n" $[100*$energy_now/$energy_full]
 
 case $(<status) in
-  'Charging') 
+  'Charging')
     hours=$[(${energy_full}-${energy_now})/${power_now}]
     ;;
-  'Discharging') 
+  'Discharging')
     hours=$[${energy_now}/${power_now}]
     power_now=$[-1.0*${power_now}]
     ;;
