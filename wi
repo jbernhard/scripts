@@ -2,43 +2,115 @@
 
 # wifi management shortcuts
 
+dev='wlan0'
+
+_set() {
+  sudo ip link set dev $dev $1
+}
+
+_scan() {
+  if is_up; then
+    was_down=false
+  else
+    was_down=true
+  fi
+  sudo iw dev $dev scan
+  if $was_down; then
+    _set down
+  fi
+}
+
+_ssid() {
+  _scan | awk '/SSID: / {print $2}' | sort | uniq | grep -v '\x00'
+}
+
+_dhcpn() {
+  sudo dhcpcd -n $dev
+}
+
+_dhcpx() {
+  sudo dhcpcd -x $dev
+}
+
+is_up() {
+  [[ -n "$(ip link show $dev up)" ]]
+  return $?
+}
+
 case $1 in
   st|status)
     sudo wpa_cli status
     echo
-    iw dev wlan0 link
+    iw dev $dev link
     echo -en '\n        '
-    iw dev wlan0 get power_save
+    iw dev $dev get power_save
     echo
-    ip addr show wlan0
+    ip link show $dev
     ;;
 
-  ip)
-    sudo dhcpcd -n wlan0
+  up|down)
+    _set $1
+    ;;
+
+  ip|dhcp)
+    _dhcpn
+    ;;
+
+  rmip|dhcpx)
+    _dhcpx
     ;;
 
   sc|scan)
-    sudo iw dev wlan0 scan | less
+    _scan | less
+    ;;
+
+  ssid)
+    _ssid
+    ;;
+
+  connect)
+    is_up || _set up
+    if [[ -n "$2" ]]; then
+      sudo iw dev $dev connect $2
+    else
+      ssids=($(_ssid))
+      select ssid in "${ssids[@]}"; do
+        sudo iw dev $dev connect $ssid
+        break
+      done
+    fi
+    _dhcpn
+    ;;
+
+  disconnect)
+    _dhcpx
+    sudo iw dev $dev disconnect
+    _set down
     ;;
 
   pwr|power|power_save)
-    sudo iw dev wlan0 set power_save $2
+    sudo iw dev $dev set power_save $2
     ;;
 
   rs|restart|stop|start)
     [[ $1 == 'rs' ]] && cmd='restart' || cmd=$1
-    sudo systemctl $cmd netctl-auto@wlan0.service
+    sudo systemctl $cmd netctl-auto@$dev.service
     ;;
 
   *)
     cat <<EOF
 usage:  $0 command
 
-  st|status             : assorted status information
-  ip                    : renew DHCP
-  sc|scan               : scan for networks
-  pwr|power|power_save  : set power saving on/off
-  rs|restart|stop|start : manage netctl auto wireless
+  st|status                     : assorted status information
+  up|down                       : set up/down
+  ip|dhcp                       : DHCP
+  rmip|dhcpx                    : release DHCP
+  sc|scan                       : scan for networks
+  ssid                          : show available SSIDs
+  connect [SSID]                : connect to open network
+  disconnect                    : release DHCP, disconnect, set down
+  pwr|power|power_save {on|off} : set power saving on/off
+  rs|restart|stop|start         : manage netctl auto wireless
 EOF
     ;;
 esac
