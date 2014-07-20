@@ -1,0 +1,10 @@
+#!/usr/bin/bash
+
+# display a fullscreen uniform color
+
+[[ -n "$1" ]] || {
+  echo -e "usage: $0 imagemagick_color\n\nhttp://www.imagemagick.org/script/color.php"
+  exit
+}
+
+convert -size 16x9 xc:"$1" png:- | feh -FZY -
