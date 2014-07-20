@@ -8,7 +8,7 @@ if pgrep chromium &> /dev/null; then
 fi
 
 echo 'stopping psd'
-sudo systemctl stop psd psd-resync || exit 1
+sudo systemctl stop psd || exit 1
 
 packer -S --noconfirm profile-sync-daemon || exit 1
 
@@ -18,6 +18,6 @@ echo 'reloading daemons'
 sudo systemctl daemon-reload || exit 1
 
 echo 'starting psd'
-sudo systemctl start psd psd-resync || exit 1
+sudo systemctl start psd || exit 1
 
 echo 'done'
