@@ -88,8 +88,9 @@ def pieces_generator(files, piece_length):
     Generate pieces of files.
 
     This is a little tricky for multi-file torrents because pieces may overlap
-    file boundaries.  Therefore, the first piece of a file may include the last
-    [partial] piece from the previous file.
+    file boundaries.  The first piece of a file may complete the final partial
+    piece from the previous file, and some small files (e.g. nfo) use less than
+    one piece.
 
     Arguments:
         files -- list of files to break into pieces
@@ -110,7 +111,12 @@ def pieces_generator(files, piece_length):
             # read only enough to complete the piece
             if piece:
                 piece += f.read(piece_length - len(piece))
-                yield piece
+
+                # only yield if the piece is complete
+                if len(piece) == piece_length:
+                    yield piece
+                else:
+                    continue
 
             # now read full pieces normally
             while True:
