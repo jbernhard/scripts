@@ -4,7 +4,7 @@
 import argparse
 import itertools
 import hashlib
-import os.path
+import os
 
 
 # functions for decoding bencoded data
@@ -198,13 +198,22 @@ def main():
     parser.add_argument('files', nargs='+', metavar='torrent_file',
                         help='Torrent file[s] to check.')
     parser.add_argument('-p', '--prefix', help='Path to downloaded files.')
+    parser.add_argument('-n', '--no-delete',
+                        dest='delete', action='store_false',
+                        help="Don't delete torrent files \
+                        upon successful verification.")
     args = parser.parse_args()
 
     success = [check_torrent(fn, prefix=args.prefix) for fn in args.files]
 
     print('{}/{} passed'.format(success.count(True), len(success)))
 
-    exit(0 if all(success) else 1)
+    if args.delete:
+        for fn, s in zip(args.files, success):
+            if s:
+                os.remove(fn)
+
+    return all(success)
 
 
 if __name__ == "__main__":
