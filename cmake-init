@@ -1,0 +1,11 @@
+#!/usr/bin/bash
+
+for build_type in Release Debug; do
+  build_dir=build/${build_type,,}
+  if [[ -d $build_dir ]]; then
+    echo "cmake already configured for build type $build_type"
+  else
+    mkdir -p $build_dir
+    ( cd $build_dir && cmake -DCMAKE_BUILD_TYPE=$build_type ../.. )
+  fi
+done
