@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+
+n=${1:-20}
+chars="${2:-[:graph:]}"
+
+tr --delete --complement "$chars" < /dev/urandom | head --bytes $n
+echo
