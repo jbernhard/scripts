@@ -2,24 +2,15 @@
 
 zmodload zsh/mathfunc
 
-cd /sys/class/power_supply/BAT0
+battery_path='/sys/class/power_supply/BAT0'
+backlight_path='/sys/class/backlight/intel_backlight'
 
-
-
-energy_full=$[float($(<energy_full))/10**6]
 energy_full_design=45.0
-energy_now=$[float($(<energy_now))/10**6]
-power_now=$[float($(<power_now))/10**6]
+energy_full=$[float($(<$battery_path/energy_full))/10**6]
+energy_now=$[float($(<$battery_path/energy_now))/10**6]
+power_now=$[float($(<$battery_path/power_now))/10**6]
 
-printf "design:     %5.2f Wh\n" $energy_full_design
-
-printf "last full:  %5.2f Wh" $energy_full
-printf " [%3.2f%%]\n" $[100*$energy_full/$energy_full_design]
-
-printf "remaining:  %5.2f Wh" $energy_now
-printf " [%3.2f%%]\n" $[100*$energy_now/$energy_full]
-
-case $(<status) in
+case $(<$battery_path/status) in
   'Charging')
     hours=$[(${energy_full}-${energy_now})/${power_now}]
     ;;
@@ -33,5 +24,13 @@ case $(<status) in
     ;;
 esac
 
-printf "rate:      %+6.2f W\n" $power_now
-printf "time:       %5.2f h\n" $hours
+energy_full_p=$[100*$energy_full/$energy_full_design]
+energy_now_p=$[100*$energy_now/$energy_full]
+brightness_p=$[100.*$(<$backlight_path/brightness)/$(<$backlight_path/max_brightness)]
+
+printf "design:      %5.1f Wh\n" $energy_full_design
+printf "last full:   %5.1f Wh [%3.1f%%]\n" $energy_full $energy_full_p
+printf "remaining:   %5.1f Wh [%3.1f%%]\n" $energy_now $energy_now_p
+printf "rate:       %+6.1f W\n" $power_now
+printf "time:        %5.1f h\n" $hours
+printf "brightness:  %5.1f%%\n" $brightness_p
