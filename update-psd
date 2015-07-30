@@ -1,8 +1,6 @@
 #!/usr/bin/bash
 
-# update profile-sync-daemon
-
-set -e
+# automate updating profile-sync-daemon
 
 if pgrep chromium &> /dev/null; then
   echo 'chromium running'
@@ -12,7 +10,7 @@ fi
 echo 'stopping psd'
 sudo systemctl stop psd
 
-packer -S --noconfirm profile-sync-daemon
+pacaur --sync --noconfirm profile-sync-daemon
 
 [[ -f /etc/psd.conf.pacnew ]] && sudo vimdiff /etc/psd.conf{,.pacnew}
 
