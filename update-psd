@@ -12,7 +12,7 @@ systemctl --user stop psd
 
 pacaur --sync --noconfirm profile-sync-daemon
 
-vimdiff ~/.config/psd/psd.conf /usr/share/doc/psd/psd.conf
+vimdiff ~/.config/psd/psd.conf /usr/share/psd/psd.conf
 
 echo 'reloading daemons'
 systemctl --user daemon-reload
