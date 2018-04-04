@@ -1,7 +1,6 @@
 #!/usr/bin/bash
 
-n=${1:-20}
-chars="${2:-[:graph:]}"
+n=${1:-32}
+chars="${2:-[:alnum:]!@#$%^&*,._=+/-}"
 
 tr --delete --complement "$chars" < /dev/urandom | head --bytes $n
-echo
