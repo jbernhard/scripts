@@ -1,0 +1,44 @@
+#!/usr/bin/bash
+
+# External monitor brightness control script.
+
+# With no arguments, gets current brightness.
+# With one argument, sets brightness.
+# May also be used as a redshift hook, in which case the first argument must be
+# 'period-changed' and the third argument sets the brightness.
+
+# Brightness may be specified as a numeric percentage or a named keyword /
+# redshift period.
+
+# Requires ddcutil.
+# Kernel module i2c_dev must be loaded, and /dev/i2c-* must be writable.
+# ddcutil includes an example udev rule to accomplish this.
+
+case $# in
+  0)
+    cmd=get
+    arg=
+    ;;
+  1)
+    cmd=set
+    arg=$1
+    ;;
+  3)
+    if [[ $1 == 'period-changed' ]]; then
+      cmd=set
+      arg=$3
+    else
+      exit 1
+    fi
+    ;;
+  *)
+    exit 1
+esac
+
+case $arg in
+  daytime|day|high) arg=75 ;;
+  transition|dawn|dusk|med) arg=40 ;;
+  night|low) arg=5 ;;
+esac
+
+ddcutil ${cmd}vcp 10 $arg
