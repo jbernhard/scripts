@@ -22,7 +22,7 @@ _scan() {
 }
 
 _ssid() {
-  _scan | awk '/SSID: / {print $2}' | sort | uniq | grep -v '\x00'
+  _scan | sed -n 's/^[[:space:]]*SSID: //p' | sort | uniq | grep -v '\x00'
 }
 
 _dhcpn() {
@@ -72,11 +72,11 @@ case $1 in
   connect)
     is_up || _set up
     if [[ -n "$2" ]]; then
-      sudo iw dev $dev connect $2
+      sudo iw dev $dev connect "$2"
     else
-      ssids=($(_ssid))
+      ssids=("$(_ssid)")
       select ssid in "${ssids[@]}"; do
-        sudo iw dev $dev connect $ssid
+        sudo iw dev $dev connect "$ssid"
         break
       done
     fi
