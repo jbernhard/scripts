@@ -1,7 +1,0 @@
-#!/usr/bin/bash
-
-# convert flac to ogg in parallel
-
-find "$@" -type f -name '*.flac' | \
-  parallel -v --progress \
-  oggenc -Q -q 8 "{}" -o "/tmp/flac2ogg/{.}.ogg"
