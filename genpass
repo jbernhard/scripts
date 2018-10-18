@@ -3,4 +3,11 @@
 n=${1:-32}
 chars="${2:-[:alnum:]!@#$%^&*,._=+/-}"
 
-tr --delete --complement "$chars" < /dev/urandom | head --bytes $n
+pwfile=$(mktemp $XDG_RUNTIME_DIR/pw.XXXXX)
+trap "rm $pwfile; xsel --clear" EXIT
+
+echo $pwfile
+</dev/urandom tr --delete --complement "$chars" | head --bytes $n | tee $pwfile
+xsel < $pwfile
+
+sleep 10m
