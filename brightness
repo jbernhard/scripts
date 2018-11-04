@@ -39,6 +39,7 @@ case $arg in
   daytime|day|high) arg=75 ;;
   transition|dawn|dusk|med) arg=40 ;;
   night|low) arg=5 ;;
+  none) exit ;;
 esac
 
 ddcutil ${cmd}vcp 10 $arg
