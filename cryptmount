@@ -1,0 +1,18 @@
+#!/usr/bin/bash
+
+set -e
+
+device=$1
+name=$2
+
+mountpoint=/mnt/$name
+
+if [[ $device == '-u' ]]; then
+  sudo umount -v /dev/mapper/$name
+  sudo rmdir -v $mountpoint
+  sudo cryptsetup -v close /dev/mapper/$name
+else
+  sudo cryptsetup -v open $device $name
+  sudo mkdir -v $mountpoint
+  sudo mount -v /dev/mapper/$name $mountpoint
+fi
