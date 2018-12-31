@@ -6,17 +6,18 @@ echo 'removing orphans'
 [[ $(pacman -Qdt) ]] && sudo pacman -Rs $(pacman -Qdtq)
 echo
 
-pc='/usr/bin/paccache --remove --verbose'
-
 source /etc/makepkg.conf
+pc="/usr/bin/paccache \
+  --remove --verbose \
+  --cachedir $(pacman-conf CacheDir) \
+  --cachedir $PKGDEST \
+"
 
-echo 'pruning cache:  uninstalled pkgs'
+echo 'pruning cache - uninstalled pkgs'
 $pc --uninstalled --keep 0
-$pc --uninstalled --keep 0 --cachedir $PKGDEST
 echo
 
-echo 'pruning cache:  old pkgs'
+echo 'pruning cache - old versions'
 $pc --keep 2
-$pc --keep 2 --cachedir $PKGDEST
 
 exit 0
