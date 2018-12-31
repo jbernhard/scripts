@@ -1,0 +1,115 @@
+#!/usr/bin/bash
+
+
+# Simple AUR package installer + updater.
+#
+# With no arguments, checks each local foreign package (pacman -Qm) against AUR
+# versions and updates any out-of-date packages.
+#
+# With arguments, installs / updates the specified packages from AUR.
+
+
+# need this so that loops reading from pipes execute in current shell,
+# not a subshell -- otherwise can't update variables inside loop
+shopt -s lastpipe
+
+# so that the glob of '*.install' below expands to a null string if no match
+shopt -s nullglob
+
+proceed() {
+  local answer
+  read -n 1 -p "$1? " answer
+  echo
+  [[ ${answer,,} == y ]]
+}
+
+# get pkg info using aur rpc interface
+pkginfo() {
+  local url='https://aur.archlinux.org/rpc/?v=5&type=info'
+  for pkg in $@; do
+    url="$url&arg[]=$pkg"
+  done
+  curl -s "$url"
+}
+
+# array to contain pkgs to sync
+declare -a sync_pkgs
+
+# if no args, check for updates, otherwise install requested pkgs
+if [[ $# -eq 0 ]]; then
+  # read local foreign pkg versions into associative array
+  declare -A localpkgs
+  pacman -Qm | while read pkg ver; do
+    localpkgs[$pkg]=$ver
+  done
+
+  # get info for local foreign pkgs from aur and compare versions
+  pkginfo ${!localpkgs[@]} | \
+    jq -r '.results | .[] | "\(.Name) \(.Version)"' | \
+    while read pkg aurver; do
+      localver=${localpkgs[$pkg]}
+      # add out-of-date pkgs to sync list
+      if (( $(vercmp $localver $aurver) < 0 )); then
+        echo "$pkg $localver -> $aurver"
+        sync_pkgs+=($pkg)
+      fi
+    done
+
+  if [[ ${#sync_pkgs[@]} -gt 0 ]]; then
+    proceed 'update packages' || exit
+  else
+    echo 'no updates'
+    exit
+  fi
+else
+  info="$(pkginfo $@)"
+  # check if each requested pkg is in aur [in case of typo, etc]
+  for pkg in $@; do
+    # it's in aur if present in the info response
+    if [[ $(echo "$info" | \
+      jq ".results | contains([{Name: \"$pkg\"}])") == true ]]
+    then
+      sync_pkgs+=($pkg)
+    else
+      echo "unknown aur package '$pkg', skipping"
+    fi
+  done
+fi
+
+cachedir=${XDG_CACHE_HOME:-~/.cache}/aur
+[[ -d $cachedir ]] || mkdir -p $cachedir
+cd $cachedir
+
+editor=${EDITOR:-vim}
+[[ $editor == *vim ]] && editor="$editor -p"
+
+# file to save previous git state for diffs
+git_state_file='.git/HEAD.prev'
+
+# download and build each pkg
+for pkg in $sync_pkgs; do
+  echo $pkg
+
+  if [[ -d $pkg ]]; then
+    cd $pkg
+    git pull
+  else
+    git clone https://aur.archlinux.org/$pkg.git
+    cd $pkg
+  fi
+
+  ls -Alph --color=auto
+
+  if [[ -e $git_state_file ]]; then
+    proceed 'view build diff' && git diff $(<$git_state_file)
+  else
+    proceed 'view build files' && $editor PKGBUILD *.install
+  fi
+
+  proceed 'proceed with build' && {
+    git rev-parse HEAD > $git_state_file
+    makepkg --syncdeps --install --clean
+  }
+
+  cd ..
+done

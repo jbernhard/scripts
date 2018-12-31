@@ -10,7 +10,7 @@ fi
 echo 'stopping psd'
 systemctl --user stop psd
 
-pacaur --sync --noconfirm profile-sync-daemon
+aur-sync profile-sync-daemon
 
 vimdiff ~/.config/psd/psd.conf /usr/share/psd/psd.conf
 
