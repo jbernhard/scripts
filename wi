@@ -74,8 +74,8 @@ case $1 in
     if [[ -n "$2" ]]; then
       sudo iw dev $dev connect "$2"
     else
-      ssids=("$(_ssid)")
-      select ssid in "${ssids[@]}"; do
+      IFS=$'\n' ssids=($(_ssid))
+      select ssid in ${ssids[@]}; do
         sudo iw dev $dev connect "$ssid"
         break
       done
