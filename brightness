@@ -42,4 +42,14 @@ case $arg in
   none) exit ;;
 esac
 
-ddcutil ${cmd}vcp 10 $arg
+# Cache number of displays (this query takes an extra second).
+if [[ -f ~/.ndisplays ]]; then
+  ndisplays=$(<~/.ndisplays)
+else
+  ndisplays=$(ddcutil detect | grep -c Display)
+  echo -n $ndisplays > ~/.ndisplays
+fi
+
+for n in $(seq $ndisplays); do
+  ddcutil --display $n ${cmd}vcp 10 $arg
+done
